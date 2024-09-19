@@ -1,8 +1,11 @@
-#include <test.hpp>
+#include <cli/instance.hpp>
 
 
-int main() {
-	test::sayHello();
+int main(int argc, char **argv) {
+	cli::Instance instance {};
 
-	return 0;
+	if (instance.construct(argc, argv) != cli::Result::eSuccess)
+		return EXIT_FAILURE;
+
+	return EXIT_SUCCESS;
 }
