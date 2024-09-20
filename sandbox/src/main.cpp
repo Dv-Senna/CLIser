@@ -1,4 +1,6 @@
 #include <cli/instance.hpp>
+#include <cli/argumentParser.hpp>
+
 
 
 int main(int argc, char **argv) {
