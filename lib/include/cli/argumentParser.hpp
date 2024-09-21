@@ -11,17 +11,19 @@
 
 namespace cli {
 	CLI_CREATE_BITFIELD(FlagValueType,
-		eString  = 0x01,
-		eInteger = 0x02,
-		eFloat   = 0x04,
-		eBoolean = 0x08
+		eString      = 0x01,
+		eInteger     = 0x02,
+		eFloat       = 0x04,
+		eBoolean     = 0x08,
+		eMultistring = 0x10
 	);
 
 
 	struct FlagValue {
-		cli::FlagValueType type;
+		cli::FlagValueTypeBits type;
 		union {
 			std::string string;
+			std::vector<std::string> multistring;
 			std::int64_t integer;
 			float floating;
 			bool boolean;

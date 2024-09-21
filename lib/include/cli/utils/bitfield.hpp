@@ -21,12 +21,12 @@
 		inline const name &operator^=(const name &other) noexcept {value ^= other.value; return *this;}\
 		inline const name &operator^=(name##Bits flag) noexcept {value ^= (std::uint64_t)flag; return *this;}\
 \
-		inline name operator|(const name &other) noexcept {auto copy {*this}; return copy |= other;}\
-		inline name operator|(name##Bits flag) noexcept {auto copy {*this}; return copy |= flag;}\
-		inline name operator&(const name &other) noexcept {auto copy {*this}; return copy &= other;}\
-		inline name operator&(name##Bits flag) noexcept {auto copy {*this}; return copy &= flag;}\
-		inline name operator^(const name &other) noexcept {auto copy {*this}; return copy ^= other;}\
-		inline name operator^(name##Bits flag) noexcept {auto copy {*this}; return copy ^= flag;}\
+		inline name operator|(const name &other) const noexcept {auto copy {*this}; return copy |= other;}\
+		inline name operator|(name##Bits flag) const noexcept {auto copy {*this}; return copy |= flag;}\
+		inline name operator&(const name &other) const noexcept {auto copy {*this}; return copy &= other;}\
+		inline name operator&(name##Bits flag) const noexcept {auto copy {*this}; return copy &= flag;}\
+		inline name operator^(const name &other) const noexcept {auto copy {*this}; return copy ^= other;}\
+		inline name operator^(name##Bits flag) const noexcept {auto copy {*this}; return copy ^= flag;}\
 \
 		inline name operator~() noexcept {return name((name##Bits)~value);}\
 \
