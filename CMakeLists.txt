@@ -1,21 +1,22 @@
-set(CMAKE_PROJECT_MINIMUM_VERSION 3.20)
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.25)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(CLIser
-	VERSION 0.0.0
+	VERSION 0.0.1
+	DESCRIPTION "CLI tools building library"
 	LANGUAGES CXX
 )
 
-set(PROJECT_ACRONYM cli)
-string(TOUPPER ${PROJECT_ACRONYM} PROJECT_ACRONYM_UPPERCASE)
-set(PROJECT_CPP_DIALECT 23)
 
-option(BUILD_TESTS "BUILD_TESTS" OFF)
+set(CLIser_LIB_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+set(CLIser_SANDBOX_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/sandbox)
 
-add_subdirectory(lib)
-add_subdirectory(sandbox)
-if (BUILD_TESTS)
-	add_subdirectory(tests)
-endif()
+set(CLIser_CPP_STANDARD 26 CACHE STRING "The cpp version used by CLIser")
+option(CLIser_SHARED_LIBRARY "" ON)
+option(CLIser_BUILD_SANDBOX_APP "" OFF)
+option(CLIser_USE_ADDRESS_SANITIZER "" ON)
+option(CLIser_DISABLE_EXCEPTIONS "" ON)
+
+
+add_subdirectory(${CLIser_LIB_FOLDER})
+add_subdirectory(${CLIser_SANDBOX_FOLDER})

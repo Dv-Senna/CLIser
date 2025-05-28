@@ -1,13 +1,7 @@
-#include <cli/instance.hpp>
-#include <cli/argumentParser.hpp>
+#include <CLIser/test.hpp>
 
 
-
-int main(int argc, char **argv) {
-	cli::Instance instance {};
-
-	if (instance.construct(argc, argv) != cli::Result::eSuccess)
-		return EXIT_FAILURE;
-
-	return EXIT_SUCCESS;
+int main(int, char**) {
+	CLIser::sayHello();
+	return 0;
 }

@@ -34,6 +34,7 @@
 # EDIs
 .vscode/*
 .clangd
+.cache/*
 
 # build folder
 build/*

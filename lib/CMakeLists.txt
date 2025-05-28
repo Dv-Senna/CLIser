@@ -1,47 +1,76 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.25)
 
 
-set(LIBRARY_NAME ${PROJECT_NAME})
-set(LIBRARY_VERSION ${PROJECT_VERSION})
-set(LIBRARY_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
-set(LIBRARY_VERSION_MINOR ${PROJECT_VERSION_MINOR})
-set(LIBRARY_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CLIser_LIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(CLIser_LIB_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_compile_definitions(
-	${PROJECT_ACRONYM_UPPERCASE}_NAME=${LIBRARY_NAME}
-	${PROJECT_ACRONYM_UPPERCASE}_VERSION_MAJOR=${LIBRARY_VERSION_MAJOR}
-	${PROJECT_ACRONYM_UPPERCASE}_VERSION_MINOR=${LIBRARY_VERSION_MINOR}
-	${PROJECT_ACRONYM_UPPERCASE}_VERSION_PATCH=${LIBRARY_VERSION_PATCH}
-)
 
-option(BUILD_STATIC "BUILD_STATIC" OFF)
+# interface to the headers of CLIser
+add_library(CLIser_headers INTERFACE)
+set_property(TARGET CLIser_headers PROPERTY CXX_STANDARD ${CLIser_CPP_STANDARD})
 
-if (BUILD_STATIC)
-	set(LIBRARY_TYPE STATIC)
-	add_compile_definitions(${PROJECT_ACRONYM_UPPERCASE}_STATIC)
-else()
-	set(LIBRARY_TYPE SHARED)
-	add_compile_definitions(
-		${PROJECT_ACRONYM_UPPERCASE}_SHARED
-		${PROJECT_ACRONYM_UPPERCASE}_BUILD_LIB
-	)
+target_include_directories(CLIser_headers INTERFACE ${CLIser_LIB_INCLUDE_DIR})
+
+target_compile_definitions(CLIser_headers INTERFACE CLIser_VERSION_MAJOR=${CLIser_VERSION_MAJOR})
+target_compile_definitions(CLIser_headers INTERFACE CLIser_VERSION_MINOR=${CLIser_VERSION_MINOR})
+target_compile_definitions(CLIser_headers INTERFACE CLIser_VERSION_PATCH=${CLIser_VERSION_PATCH})
+if (${CLIser_SHARED_LIBRARY})
+	target_compile_definitions(CLIser_headers INTERFACE CLIser_BUILD_SHARED)
 endif()
 
-include_directories(include)
-
-file(GLOB_RECURSE LIBRARY_HEADER *.hpp)
-file(GLOB_RECURSE LIBRARY_INLINE *.inl)
-file(GLOB_RECURSE LIBRARY_SOURCE *.cpp)
-
-add_library(${LIBRARY_NAME} ${LIBRARY_TYPE} ${LIBRARY_HEADER} ${LIBRARY_INLINE} ${LIBRARY_SOURCE})
-set_property(TARGET ${LIBRARY_NAME} PROPERTY CXX_STANDARD ${PROJECT_CPP_DIALECT})
-
-if (WIN32)
-	add_compile_definitions(${PROJECT_ACRONYM_UPPERCASE}_WINDOWS)
-elseif (UNIX)
-	add_compile_definitions(${PROJECT_ACRONYM_UPPERCASE}_LINUX)
-elseif (APPLE)
-	add_compile_definitions(${PROJECT_ACRONYM_UPPERCASE}_APPLE)
-else()
-	message(FATAL_ERROR "Platforms other than Windows, Linux and MacOS aren't supported for now")
+# setup compiler options for development
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+	if (MSVC)
+		target_compile_options(CLIser_headers INTERFACE /W4)
+	else()
+		target_compile_options(CLIser_headers INTERFACE -Wall -Wextra -Wpedantic)
+		if (CLIser_USE_ADDRESS_SANITIZER)
+			target_compile_options(CLIser_headers INTERFACE -fsanitize=address)
+			target_link_options(CLIser_headers INTERFACE -fsanitize=address)
+		endif()
+	endif()
 endif()
+
+# disable exceptions
+if (CLIser_DISABLE_EXCEPTIONS)
+	target_compile_definitions(CLIser_headers INTERFACE CLIser_DISABLE_EXCEPTIONS)
+	if (MSVC)
+		target_compile_options(CLIser_headers INTERFACE /EHsc)
+	else()
+		target_compile_options(CLIser_headers INTERFACE -fno-exceptions)
+	endif()
+endif()
+
+add_library(CLIser::headers ALIAS CLIser_headers)
+
+
+# some stuffs related to the library
+file(GLOB_RECURSE CLIser_LIB_SOURCE_FILES ${CLIser_LIB_SOURCE_DIR}/*.cpp)
+
+
+# static library of CLIser
+add_library(CLIser_static_lib STATIC ${CLIser_LIB_SOURCE_FILES})
+set_property(TARGET CLIser_static_lib PROPERTY CXX_STANDARD ${CLIser_CPP_STANDARD})
+set_property(TARGET CLIser_static_lib PROPERTY EXCLUDE_FROM_ALL ${CLIser_SHARED_LIBRARY})
+
+target_link_libraries(CLIser_static_lib PUBLIC CLIser::headers)
+
+add_library(CLIser::static ALIAS CLIser_static_lib)
+
+
+# shared library of CLIser
+add_library(CLIser_shared_lib SHARED ${CLIser_LIB_SOURCE_FILES})
+set_property(TARGET CLIser_shared_lib PROPERTY CXX_STANDARD ${CLIser_CPP_STANDARD})
+set_property(TARGET CLIser_shared_lib PROPERTY EXCLUDE_FROM_ALL NOT ${CLIser_SHARED_LIBRARY})
+
+target_compile_definitions(CLIser_shared_lib PRIVATE CLIser_BUILD_LIB)
+target_link_libraries(CLIser_shared_lib PUBLIC CLIser::headers)
+
+add_library(CLIser::shared ALIAS CLIser_shared_lib)
+if (${CLIser_SHARED_LIBRARY})
+	add_library(CLIser::CLIser ALIAS CLIser_shared_lib)
+else()
+	add_library(CLIser::CLIser ALIAS CLIser_static_lib)
+endif()
+
+

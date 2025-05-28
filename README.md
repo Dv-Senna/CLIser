@@ -1,2 +1,2 @@
-# library_project_template
-A template for C++ library, an example app and unit testing
+# CLIser
+A C++ library that make building CLI tools easier
