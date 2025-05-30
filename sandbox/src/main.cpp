@@ -15,6 +15,14 @@ int main(int argc, char **argv) {
 		.description = "The name of the user"
 	})};
 
+	auto age {CLIser::Argument<int>::construct({
+		.context = context,
+		.tags = {"age"},
+		.description = "Age of the user",
+		.defaultValue = 18,
+		.condition = [](int age) {return age >= 18 && age <= 100;}
+	})};
+
 	if (!context.parse())
 		return std::println(stderr, "Can't parse args"), EXIT_FAILURE;
 
@@ -23,6 +31,8 @@ int main(int argc, char **argv) {
 		std::println("Name : {}", *name);
 	else
 		std::println("No name");
+
+	std::println("Age : {}", *age);
 
 	return EXIT_SUCCESS;
 }
