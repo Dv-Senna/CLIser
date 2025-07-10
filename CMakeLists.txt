@@ -1,5 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
-
+cmake_minimum_required(VERSION 3.30)
 
 project(CLIser
 	VERSION 0.0.1
@@ -7,16 +6,42 @@ project(CLIser
 	LANGUAGES CXX
 )
 
-
-set(CLIser_LIB_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/lib)
-set(CLIser_SANDBOX_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/sandbox)
-
-set(CLIser_CPP_STANDARD 26 CACHE STRING "The cpp version used by CLIser")
-option(CLIser_SHARED_LIBRARY "" ON)
-option(CLIser_BUILD_SANDBOX_APP "" OFF)
-option(CLIser_USE_ADDRESS_SANITIZER "" ON)
-option(CLIser_DISABLE_EXCEPTIONS "" ON)
+include(GenerateExportHeader)
 
 
-add_subdirectory(${CLIser_LIB_FOLDER})
-add_subdirectory(${CLIser_SANDBOX_FOLDER})
+
+# CLIser lib
+file(GLOB_RECURSE CLISER_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/*.cpp)
+add_library(CLIser SHARED ${CLISER_SOURCES})
+add_library(CLIser::CLIser ALIAS CLIser)
+
+set(GENERATE_EXPORT_HEADERS_UNDEF_DEPRECATION "
+#undef CLISER_DEPRECATED
+#undef CLISER_DEPRECATED_EXPORT
+#undef CLISER_DEPRECATED_NO_EXPORT"
+)
+generate_export_header(CLIser
+	EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/generated/include/CLIser/export.hpp
+	BASE_NAME CLIser
+	EXPORT_MACRO_NAME CLIser_EXPORT
+	NO_EXPORT_MACRO_NAME CLIser_NO_EXPORT
+	STATIC_DEFINE CLIser_STATIC_DEFINE
+	CUSTOM_CONTENT_FROM_VARIABLE GENERATE_EXPORT_HEADERS_UNDEF_DEPRECATION
+)
+
+target_include_directories(CLIser
+	PUBLIC
+		${CMAKE_CURRENT_SOURCE_DIR}/lib/include
+	PRIVATE
+		${CMAKE_CURRENT_BINARY_DIR}/generated/include
+)
+target_compile_features(CLIser PUBLIC cxx_std_26)
+
+if (MSVC)
+	target_compile_options(CLIser PRIVATE /W4)
+else()
+	target_compile_options(CLIser PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/examples)
