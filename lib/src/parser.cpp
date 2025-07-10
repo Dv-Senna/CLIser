@@ -16,8 +16,10 @@ namespace CLIser {
 			| std::views::transform([](auto str) {return std::string_view{str};})
 		) {
 			if (*arg.begin() != '-') {
-				if (!currentArg)
-					return std::unexpected(std::format("Argument not starting with - : {}", arg));
+				if (!currentArg) {
+					parser.m_rawUnnamedArgs.push_back(arg);
+					continue;
+				}
 				parser.m_rawArgs[*currentArg] = arg;
 				currentArg = std::nullopt;
 				continue;
@@ -39,6 +41,7 @@ namespace CLIser {
 
 		for (const auto &arg : parser.m_rawArgs)
 			std::println("'{}'='{}'", arg.first, arg.second.value_or("<none>"));
+		std::println("unnamed : {}", parser.m_rawUnnamedArgs);
 		return parser;
 	}
 }
