@@ -42,7 +42,12 @@ namespace CLIser {
 	CLIser_MAKE_OPTIONAL_STRING_VALUE_ARG(Long);
 	CLIser_MAKE_STRING_VALUE_ARG(Name);
 	CLIser_MAKE_STRING_VALUE_ARG(Version);
-	struct _Help {};
+	struct _Help {
+		std::size_t tabulationSize {4};
+		std::size_t descriptionAlignment {30};
+		std::size_t maxDescriptionWidth {50};
+		constexpr auto operator()(auto&&... args) noexcept {return _Help{std::forward<decltype(args)> (args)...};}
+	};
 	constexpr _Help Help {};
 
 	static_assert(std::same_as<Description<6>, decltype(Description{"Hello"})>);

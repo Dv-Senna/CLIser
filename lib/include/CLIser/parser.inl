@@ -12,16 +12,6 @@
 
 
 namespace CLIser {
-	namespace internals {
-		template <argument_list ArgumentList>
-		auto printHelp() noexcept -> void {
-			constexpr auto ctx {std::meta::access_context::current()};
-			[[maybe_unused]]
-			constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^ArgumentList, ctx))};
-		};
-	}
-
-
 	template <argument_list ArgumentList>
 	auto Parser::parse() const noexcept -> std::expected<ArgumentList, std::string> {
 		using namespace std::string_view_literals;
@@ -37,7 +27,7 @@ namespace CLIser {
 				false, std::logical_or<bool> {}
 			)};
 			if (helpRequested) {
-				internals::printHelp<ArgumentList> ();
+				this->m_printHelp<ArgumentList> ();
 				return ArgumentList{};
 			}
 		}
@@ -67,5 +57,65 @@ namespace CLIser {
 			}
 		}
 		return ArgumentList{};
+	}
+
+
+	template <argument_list ArgumentList>
+	auto Parser::m_printHelp() const noexcept -> void {
+		using namespace std::string_literals;
+		constexpr auto ctx {std::meta::access_context::current()};
+		constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^ArgumentList, ctx))};
+		constexpr auto help {CLIser::utils::getAnnotation<^^ArgumentList, CLIser::_Help> ()};
+
+		std::println("Usage: {} [options]", m_commandName);
+		std::println("Options:");
+
+		template for (constexpr auto member : members) {
+			std::string option {};
+			std::optional<std::string> description {};
+
+			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Short> ()) {
+				constexpr auto short_ {CLIser::utils::getAnnotation<member, CLIser::_Short> ()};
+				if constexpr (!short_)
+					option += "-"s + identifier_of(member)[0];
+				else
+					option += "-"s + short_->value;
+			}
+			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Long> ()) {
+				if (!option.empty())
+					option += ',';
+				constexpr auto long_ {CLIser::utils::getAnnotation<member, CLIser::_Long> ()};
+				if constexpr (!long_)
+					option += "--"s + identifier_of(member);
+				else
+					option += "--"s + long_->value;
+			}
+			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::Description> ())
+				description = CLIser::utils::getAnnotation<member, CLIser::Description> ()->value;
+
+			std::string text {};
+			text.reserve(help.descriptionAlignment + help.maxDescriptionWidth);
+			text.append_range(std::views::repeat(' ', help.tabulationSize));
+			text += option;
+
+			if (!description) {
+				std::println("{}", text);
+				continue;
+			}
+
+			std::string delimiter {"\n"};
+			delimiter.append_range(std::views::repeat(' ', help.tabulationSize));
+			description = *description
+				| CLIser::utils::views::chunk(help.maxDescriptionWidth)
+				| std::views::join_with(delimiter)
+				| std::ranges::to<std::string> ();
+
+			if (option.size() > help.descriptionAlignment) {
+				text += "\n";
+				text.append_range(std::views::repeat(' ', help.descriptionAlignment));
+			}
+			else
+				text.append_range(std::views::repeat(' ', help.descriptionAlignment - text.size()));
+		}
 	}
 }

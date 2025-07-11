@@ -10,9 +10,10 @@ namespace CLIser {
 	[[nodiscard]]
 	auto Parser::create(CreateInfos &&createInfos) noexcept -> std::expected<Parser, std::string> {
 		Parser parser {};
+		parser.m_commandName = std::string_view{createInfos.args[0]};
 
 		std::optional<std::string_view> currentArg {std::nullopt};
-		for (const auto arg : createInfos.args
+		for (const auto arg : createInfos.args.subspan(1)
 			| std::views::transform([](auto str) {return std::string_view{str};})
 		) {
 			if (*arg.begin() != '-') {
