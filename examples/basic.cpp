@@ -8,6 +8,7 @@ struct [[
 	=CLIser::Help,
 	=CLIser::Name("BasicExample"),
 	=CLIser::Version("alpha-0.1.2")
+	=CLIser::VersionDescription("Special development version")
 ]] ArgumentList {
 	[[=CLIser::Description("Say hello to the user"), =CLIser::Long("hello")]]
 	bool sayHello;

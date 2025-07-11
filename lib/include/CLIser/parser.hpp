@@ -19,9 +19,10 @@ namespace CLIser {
 	namespace internals {
 		template <typename T>
 		consteval auto isArgumentListValidAnnotations() {
-			[[maybe_unused]] const bool hasHelp {CLIser::utils::hasAnnotation<^^T, CLIser::_Help> ()};
-			[[maybe_unused]] const bool hasName {CLIser::utils::hasAnnotation<^^T, CLIser::Name> ()};
-			[[maybe_unused]] const bool hasVersion {CLIser::utils::hasAnnotation<^^T, CLIser::Version> ()};
+			const bool hasHelp {CLIser::utils::hasAnnotation<^^T, CLIser::_Help> ()};
+			const bool hasName {CLIser::utils::hasAnnotation<^^T, CLIser::Name> ()};
+			const bool hasVersion {CLIser::utils::hasAnnotation<^^T, CLIser::Version> ()};
+			const bool hasVersionDescription {CLIser::utils::hasAnnotation<^^T, CLIser::VersionDescription> ()};
 
 			if (!CLIser::utils::isTypeShortAllShort<T> ())
 				throw "All your Short must be one character wide. If you need more space, use Long";
@@ -41,6 +42,8 @@ namespace CLIser {
 				|| CLIser::utils::hasTypeOption<T> ("version")
 			))
 				throw "You can't use '-v' or '--version' when version menu is enable";
+			if (hasVersionDescription && !hasName)
+				throw "You can't specify a VersionDescription if the version menu is not enabled";
 			return true;
 		};
 	}
@@ -73,6 +76,9 @@ namespace CLIser {
 
 			template <argument_list ArgumentList>
 			auto m_printHelp() const noexcept -> void;
+			template <argument_list ArgumentList>
+			auto m_printVersion() const noexcept -> void;
+
 			static auto s_printArgumentHelp(
 				std::string_view option,
 				std::optional<std::string_view> description,

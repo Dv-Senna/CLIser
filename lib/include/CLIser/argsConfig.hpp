@@ -42,6 +42,7 @@ namespace CLIser {
 	CLIser_MAKE_OPTIONAL_STRING_VALUE_ARG(Long);
 	CLIser_MAKE_STRING_VALUE_ARG(Name);
 	CLIser_MAKE_STRING_VALUE_ARG(Version);
+	CLIser_MAKE_STRING_VALUE_ARG(VersionDescription);
 	struct _Help {
 		std::size_t tabulationSize {4};
 		std::size_t descriptionAlignment {30};

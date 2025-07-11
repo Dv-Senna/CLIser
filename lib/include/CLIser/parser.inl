@@ -18,16 +18,25 @@ namespace CLIser {
 		constexpr auto ctx {std::meta::access_context::current()};
 		constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^ArgumentList, ctx))};
 
-
-		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::_Help> ()) {
-			const bool helpRequested {std::ranges::fold_left(std::array{"h"sv, "help"sv}
+		const auto hasOneOfArguments = [this](const auto& args) {
+			return std::ranges::fold_left(args
 				| std::views::transform([this](const auto key) {
 					return this->m_rawArgs.find(key) != this->m_rawArgs.end();
 				}),
 				false, std::logical_or<bool> {}
-			)};
-			if (helpRequested) {
+			);
+		};
+
+		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::_Help> ()) {
+			if (hasOneOfArguments(std::array{"h"sv, "help"sv})) {
 				this->m_printHelp<ArgumentList> ();
+				return ArgumentList{};
+			}
+		}
+
+		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::Version> ()) {
+			if (hasOneOfArguments(std::array{"v"sv, "version"sv})) {
+				this->m_printVersion<ArgumentList> ();
 				return ArgumentList{};
 			}
 		}
@@ -79,25 +88,31 @@ namespace CLIser {
 			std::optional<std::string_view> description {};
 
 			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Short> ()) {
-				constexpr auto short_ {CLIser::utils::getAnnotation<member, CLIser::_Short> ()};
-				if constexpr (!short_)
-					option += "-"s + identifier_of(member)[0];
-				else
-					option += "-"s + short_->value;
+				option += "-"s + CLIser::utils::getMemberShort<member> ();
 			}
 			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Long> ()) {
 				if (!option.empty())
 					option += ',';
-				constexpr auto long_ {CLIser::utils::getAnnotation<member, CLIser::_Long> ()};
-				if constexpr (!long_)
-					option += "--"s + identifier_of(member);
-				else
-					option += "--"s + long_->value;
+				option += "--"s + CLIser::utils::getMemberLong<member> ();
 			}
 			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::Description> ())
 				description = CLIser::utils::getAnnotation<member, CLIser::Description> ()->value;
 
 			s_printArgumentHelp(option, description, help);
+		}
+	}
+
+
+	template <argument_list ArgumentList>
+	auto Parser::m_printVersion() const noexcept -> void {
+		constexpr auto name {*CLIser::utils::getAnnotation<^^ArgumentList, CLIser::Name> ()};
+		constexpr auto version {*CLIser::utils::getAnnotation<^^ArgumentList, CLIser::Version> ()};
+		std::println("{} ({}) version {}", m_commandName, name.value, version.value);
+		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::VersionDescription> ()) {
+			constexpr auto versionDescription {
+				*CLIser::utils::getAnnotation<^^ArgumentList, CLIser::VersionDescription> ()
+			};
+			std::println("{}", versionDescription.value);
 		}
 	}
 }
