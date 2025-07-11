@@ -23,8 +23,24 @@ namespace CLIser {
 			[[maybe_unused]] const bool hasName {CLIser::utils::hasAnnotation<^^T, CLIser::Name> ()};
 			[[maybe_unused]] const bool hasVersion {CLIser::utils::hasAnnotation<^^T, CLIser::Version> ()};
 
+			if (!CLIser::utils::isTypeShortAllShort<T> ())
+				throw "All your Short must be one character wide. If you need more space, use Long";
+			if (!CLIser::utils::isTypeLongAllLong<T> ())
+				throw "All your Long must be more than one character wide. If you want a single character, use Short";
+
+			if (hasHelp && (
+				CLIser::utils::hasTypeOption<T> ("h")
+				|| CLIser::utils::hasTypeOption<T> ("help")
+			))
+				throw "You can't use '-h' or '--help' options when help menu is enable";
+
 			if (hasName != hasVersion)
 				throw "You must specify both Name and Version, or neither of those as application info";
+			if (hasName && (
+				CLIser::utils::hasTypeOption<T> ("v")
+				|| CLIser::utils::hasTypeOption<T> ("version")
+			))
+				throw "You can't use '-v' or '--version' when version menu is enable";
 			return true;
 		};
 	}

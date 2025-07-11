@@ -68,6 +68,81 @@ namespace CLIser::utils {
 	}
 
 
+	template <std::meta::info r>
+	consteval auto getMemberShort() -> std::string {
+		if constexpr (!hasAnnotation<r, CLIser::_Short> ())
+			throw "Can't get member short as it does not have this annotation";
+		constexpr auto short_ {getAnnotation<r, CLIser::_Short> ()};
+		if constexpr (!!short_)
+			return std::string{short_->value};
+		else
+			return std::string{identifier_of(r)}.substr(0, 1);
+	};
+
+	template <std::meta::info r>
+	consteval auto getMemberLong() -> std::string {
+		if constexpr (!hasAnnotation<r, CLIser::_Long> ())
+			throw "Can't get member long as it does not have this annotation";
+		constexpr auto long_ {getAnnotation<r, CLIser::_Long> ()};
+		if constexpr (!!long_)
+			return std::string{long_->value};
+		else
+			return std::string{identifier_of(r)};
+	};
+
+
+	template <typename T>
+	consteval auto hasTypeOption(std::string_view option) -> bool {
+		constexpr auto ctx {std::meta::access_context::current()};
+		constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^T, ctx))};
+
+		std::size_t count {};
+		template for (constexpr auto member : members) {
+			if constexpr (hasAnnotation<member, CLIser::_Short> ()) {
+				if (getMemberShort<member> () == option)
+					++count;
+			}
+			else if constexpr (hasAnnotation<member, CLIser::_Long> ()) {
+				if (getMemberLong<member> () == option)
+					++count;
+			}
+		}
+
+		if (count > 1)
+			throw "An option was supplied multiple times";
+		return count == 1;
+	}
+
+
+	template <typename T>
+	consteval auto isTypeShortAllShort() -> bool {
+		constexpr auto ctx {std::meta::access_context::current()};
+		constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^T, ctx))};
+
+		template for (constexpr auto member : members) {
+			if constexpr (hasAnnotation<member, CLIser::_Short> ()) {
+				if (getMemberShort<member> ().size() != 1)
+					return false;
+			}
+		}
+		return true;
+	}
+
+	template <typename T>
+	consteval auto isTypeLongAllLong() -> bool {
+		constexpr auto ctx {std::meta::access_context::current()};
+		constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^T, ctx))};
+
+		template for (constexpr auto member : members) {
+			if constexpr (hasAnnotation<member, CLIser::_Long> ()) {
+				if (getMemberLong<member> ().size() <= 1)
+					return false;
+			}
+		}
+		return true;
+	}
+
+
 	namespace views {
 	#if __cpp_lib_ranges_ch >= 202202L
 		constexpr auto &chunk {std::views::chunk};
@@ -157,9 +232,9 @@ namespace CLIser::utils {
 			public:
 				using iterator = ChunkViewIterator<Range>;
 
-				template <std::ranges::input_range Arg>
-				constexpr ChunkView(Arg &&arg, std::size_t chunkSize) noexcept :
-					m_range {std::forward<Arg> (arg)},
+				template <std::ranges::input_range _Range>
+				constexpr ChunkView(_Range &&range, std::size_t chunkSize) noexcept :
+					m_range {std::forward<_Range> (range)},
 					m_chunkSize {chunkSize},
 					m_chunkCount {(std::size_t)std::ceil(std::ranges::size(m_range) / (float)chunkSize)}
 				{}

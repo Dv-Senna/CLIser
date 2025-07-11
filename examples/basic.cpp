@@ -13,8 +13,8 @@ struct [[
 	bool sayHello;
 	[[=CLIser::Short, =CLIser::Description("Specify the output file")]]
 	std::string_view output;
-	[[=CLIser::Short, =CLIser::Long]]
-	bool version;
+	[[=CLIser::Short("k"), =CLIser::Long("kount")]]
+	int count;
 };
 
 int main(int argc, char** argv) {

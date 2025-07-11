@@ -71,6 +71,9 @@ namespace CLIser {
 		std::println("Options:");
 		s_printArgumentHelp("-h,--help", "Display this menu", help);
 
+		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::Name> ())
+			s_printArgumentHelp("-v,--version", "Display the version of the application", help);
+
 		template for (constexpr auto member : members) {
 			std::string option {};
 			std::optional<std::string_view> description {};
