@@ -23,5 +23,11 @@ int main(int argc, char** argv) {
 
 	(void)parser->parse<ArgumentList> ();
 
+/*	std::string text {"Hello world, I'm will test really small line size, like 5 characters"};
+	auto lines {text | CLIser::utils::views::chunk(5)};
+	for (auto it {lines.begin()}; it != lines.end(); ++it) {
+		std::println("line : {}", *it);
+	}*/
+
 	return EXIT_SUCCESS;
 }
