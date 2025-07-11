@@ -9,8 +9,12 @@ struct [[
 	=CLIser::Name("BasicExample"),
 	=CLIser::Version("alpha-0.1.2")
 ]] ArgumentList {
-	[[=CLIser::Short, =CLIser::Description("Hello"), =CLIser::Long("a")]]
-	int a;
+	[[=CLIser::Description("Say hello to the user"), =CLIser::Long("hello")]]
+	bool sayHello;
+	[[=CLIser::Short, =CLIser::Description("Specify the output file")]]
+	std::string_view output;
+	[[=CLIser::Short, =CLIser::Long]]
+	bool version;
 };
 
 int main(int argc, char** argv) {

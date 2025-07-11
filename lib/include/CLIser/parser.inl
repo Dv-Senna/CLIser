@@ -69,10 +69,11 @@ namespace CLIser {
 
 		std::println("Usage: {} [options]", m_commandName);
 		std::println("Options:");
+		s_printArgumentHelp("-h,--help", "Display this menu", help);
 
 		template for (constexpr auto member : members) {
 			std::string option {};
-			std::optional<std::string> description {};
+			std::optional<std::string_view> description {};
 
 			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Short> ()) {
 				constexpr auto short_ {CLIser::utils::getAnnotation<member, CLIser::_Short> ()};
@@ -93,29 +94,7 @@ namespace CLIser {
 			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::Description> ())
 				description = CLIser::utils::getAnnotation<member, CLIser::Description> ()->value;
 
-			std::string text {};
-			text.reserve(help.descriptionAlignment + help.maxDescriptionWidth);
-			text.append_range(std::views::repeat(' ', help.tabulationSize));
-			text += option;
-
-			if (!description) {
-				std::println("{}", text);
-				continue;
-			}
-
-			std::string delimiter {"\n"};
-			delimiter.append_range(std::views::repeat(' ', help.tabulationSize));
-			description = *description
-				| CLIser::utils::views::chunk(help.maxDescriptionWidth)
-				| std::views::join_with(delimiter)
-				| std::ranges::to<std::string> ();
-
-			if (option.size() > help.descriptionAlignment) {
-				text += "\n";
-				text.append_range(std::views::repeat(' ', help.descriptionAlignment));
-			}
-			else
-				text.append_range(std::views::repeat(' ', help.descriptionAlignment - text.size()));
+			s_printArgumentHelp(option, description, help);
 		}
 	}
 }

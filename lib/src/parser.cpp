@@ -1,6 +1,7 @@
 #include "CLIser/parser.hpp"
 
 #include <format>
+#include <print>
 #include <ranges>
 
 #include <print>
@@ -40,9 +41,43 @@ namespace CLIser {
 			parser.m_rawArgs[argName.substr(0, 1)] = argName.substr(1);
 		}
 
-		for (const auto &arg : parser.m_rawArgs)
+		/*for (const auto &arg : parser.m_rawArgs)
 			std::println("'{}'='{}'", arg.first, arg.second.value_or("<none>"));
-		std::println("unnamed : {}", parser.m_rawUnnamedArgs);
+		std::println("unnamed : {}", parser.m_rawUnnamedArgs);*/
 		return parser;
+	}
+
+
+	auto Parser::s_printArgumentHelp(
+		std::string_view option,
+		std::optional<std::string_view> description,
+		const _Help& help
+	) noexcept -> void {
+		std::string text {};
+		text.reserve(help.descriptionAlignment + help.maxDescriptionWidth);
+		text.append_range(std::views::repeat(' ', help.tabulationSize));
+		text += option;
+
+		if (!description) {
+			std::println("{}", text);
+			return;
+		}
+
+		std::string delimiter {"\n"};
+		delimiter.append_range(std::views::repeat(' ', help.descriptionAlignment));
+		auto lineBreakDescription {*description
+			| CLIser::utils::views::chunk(help.maxDescriptionWidth)
+			| std::views::join_with(delimiter)
+		};
+
+		if (text.size() > help.descriptionAlignment) {
+			text += "\n";
+			text.append_range(std::views::repeat(' ', help.descriptionAlignment));
+		}
+		else
+			text.append_range(std::views::repeat(' ', help.descriptionAlignment - text.size()));
+
+		text.append_range(lineBreakDescription);
+		std::println("{}", text);
 	}
 }

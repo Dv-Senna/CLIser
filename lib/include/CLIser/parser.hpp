@@ -19,9 +19,9 @@ namespace CLIser {
 	namespace internals {
 		template <typename T>
 		consteval auto isArgumentListValidAnnotations() {
-			const bool hasHelp {CLIser::utils::hasAnnotation<^^T, CLIser::_Help> ()};
-			const bool hasName {CLIser::utils::hasAnnotation<^^T, CLIser::Name> ()};
-			const bool hasVersion {CLIser::utils::hasAnnotation<^^T, CLIser::Version> ()};
+			[[maybe_unused]] const bool hasHelp {CLIser::utils::hasAnnotation<^^T, CLIser::_Help> ()};
+			[[maybe_unused]] const bool hasName {CLIser::utils::hasAnnotation<^^T, CLIser::Name> ()};
+			[[maybe_unused]] const bool hasVersion {CLIser::utils::hasAnnotation<^^T, CLIser::Version> ()};
 
 			if (hasName != hasVersion)
 				throw "You must specify both Name and Version, or neither of those as application info";
@@ -57,6 +57,11 @@ namespace CLIser {
 
 			template <argument_list ArgumentList>
 			auto m_printHelp() const noexcept -> void;
+			static auto s_printArgumentHelp(
+				std::string_view option,
+				std::optional<std::string_view> description,
+				const _Help& help
+			) noexcept -> void;
 
 			std::string_view m_commandName;
 			std::unordered_map<std::string_view, std::optional<std::string_view>> m_rawArgs;
