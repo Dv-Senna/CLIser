@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
 	auto arguments {std::move(*argumentsWithError)};
 
 	std::println("sayHello={}", arguments.sayHello);
-	std::println("output({})={}", arguments.output.size(), arguments.output);
+	std::println("output={}", arguments.output);
 	std::println("count={}", arguments.count.value_or(-10));
 
 /*	std::string text {"Hello world, I'm will test really small line size, like 5 characters"};
