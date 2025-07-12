@@ -71,6 +71,8 @@ namespace CLIser {
 			[[nodiscard]]
 			auto parse() const noexcept -> std::expected<ArgumentList, std::string>;
 
+			inline auto getUnnamedArgs() const noexcept -> const auto& {return m_rawUnnamedArgs;}
+
 
 		private:
 			Parser() noexcept = default;
