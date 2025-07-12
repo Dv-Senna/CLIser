@@ -182,7 +182,7 @@ namespace CLIser {
 	auto Parser::m_printVersion() const noexcept -> void {
 		constexpr auto name {*CLIser::utils::getAnnotation<^^ArgumentList, CLIser::Name> ()};
 		constexpr auto version {*CLIser::utils::getAnnotation<^^ArgumentList, CLIser::Version> ()};
-		std::println("{} ({}) version {}", m_commandName, name.value, version.value);
+		std::println("{} {}", name.value, version.value);
 		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::VersionDescription> ()) {
 			constexpr auto versionDescription {
 				*CLIser::utils::getAnnotation<^^ArgumentList, CLIser::VersionDescription> ()

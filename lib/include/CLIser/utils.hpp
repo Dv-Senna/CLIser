@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cmath>
 #include <compare>
 #include <iterator>
@@ -147,24 +148,40 @@ namespace CLIser::utils {
 	#if __cpp_lib_ranges_ch >= 202202L
 		constexpr auto &chunk {std::views::chunk};
 	#else
-		template <std::ranges::forward_range Range>
+		template <std::ranges::input_range Range>
 		class ChunkViewIterator final {
 			using This = ChunkViewIterator<Range>;
-			template <std::ranges::forward_range>
+			template <std::ranges::input_range>
 			friend class ChunkView;
 
 			public:
-				using value_type = decltype(std::views::counted(
-					std::declval<std::ranges::iterator_t<Range>> (),
-					std::size_t{})
-				);
+				using value_type = std::conditional_t<std::ranges::forward_range<Range>,
+					decltype(std::ranges::subrange(
+						std::declval<std::ranges::iterator_t<Range>> (), std::declval<std::ranges::iterator_t<Range>> ()
+					) | std::views::take(std::size_t{})),
+					decltype(std::declval<Range> () | std::views::take(std::size_t{}))
+				>;
 				using difference_type = std::iter_difference_t<std::ranges::iterator_t<Range>>;
 
-				constexpr ChunkViewIterator() noexcept = default;
+				constexpr ChunkViewIterator() noexcept :
+					m_range {nullptr},
+					m_chunkIndex {0},
+					m_chunkSize {0}
+				{}
 				constexpr ChunkViewIterator(const This&) noexcept = default;
 				constexpr auto operator=(const This&) noexcept -> This& = default;
 
-				constexpr auto operator==(const This&) const noexcept -> bool = default;
+				constexpr auto operator==(const This& other) const noexcept -> bool {
+					if (m_range == nullptr && other.m_range == nullptr)
+						return true;
+					if (m_range == nullptr || other.m_range == nullptr)
+						return false;
+					assert(m_range == other.m_range && "Can't compare iterator that are not on the same range");
+					assert(m_chunkSize == other.m_chunkSize
+						&& "Can't compare iterator that don't have the same chunk size"
+					);
+					return m_chunkIndex == other.m_chunkIndex;
+				}
 				constexpr auto operator<=> (const This& other) const noexcept -> std::partial_ordering {
 					if (m_range != other.m_range)
 						return std::partial_ordering::unordered;
@@ -173,7 +190,21 @@ namespace CLIser::utils {
 					return m_chunkIndex <=> other.m_chunkIndex;
 				}
 
-				constexpr auto operator++() noexcept -> This& {++m_chunkIndex; return *this;}
+				constexpr auto operator++() noexcept -> This& {
+					if constexpr (std::ranges::forward_range<Range>) {
+						++m_chunkIndex;
+						const auto chunkCount {static_cast<std::size_t> (
+							std::ceil(std::ranges::size(*m_range) / static_cast<float> (m_chunkSize))
+						)};
+						if (m_chunkIndex >= chunkCount)
+							m_range = nullptr;
+					}
+					else {
+						if constexpr (std::ranges::empty(*m_range))
+							m_range = nullptr;
+					}
+					return *this;
+				}
 				constexpr auto operator++(int) noexcept -> This {auto tmp {*this}; ++(*this); return tmp;}
 				constexpr auto operator--() noexcept -> This& {--m_chunkIndex; return *this;}
 				constexpr auto operator--(int) noexcept -> This {auto tmp {*this}; --(*this); return tmp;}
@@ -187,29 +218,31 @@ namespace CLIser::utils {
 					return m_chunkIndex - other.m_chunkIndex;
 				}
 
-				constexpr auto operator[](difference_type n) const noexcept {return *(*this + n);}
+				constexpr auto operator[](difference_type n) const noexcept -> value_type {return *(*this + n);}
 
 				constexpr auto operator*() const noexcept {
-					const std::size_t position {m_chunkIndex * m_chunkSize};
-					const std::size_t tailSize {m_rangeSize - position};
-					const std::size_t chunkSize {tailSize >= m_chunkSize ? m_chunkSize : tailSize};
-					auto it {std::ranges::begin(*m_range)};
-					std::advance(it, position);
-					return std::views::counted(it, chunkSize);
+					if constexpr (std::ranges::forward_range<Range>) {
+						const std::size_t position {m_chunkIndex * m_chunkSize};
+						auto it {std::ranges::begin(*m_range)};
+						const auto sentinel {std::ranges::end(*m_range)};
+
+						std::ranges::advance(it, position, sentinel);
+						return std::ranges::subrange(it, sentinel) | std::views::take(m_chunkSize);
+					}
+					else
+						return *m_range | std::views::take(m_chunkSize);
 				}
 
 
 			private:
-				constexpr ChunkViewIterator(Range &range, std::size_t chunkSize, std::size_t chunkIndex) noexcept :
+				constexpr ChunkViewIterator(Range &range, std::size_t chunkSize) noexcept :
 					m_range {&range},
-					m_rangeSize {std::ranges::size(range)},
-					m_chunkIndex {chunkIndex},
+					m_chunkIndex {0},
 					m_chunkSize {chunkSize}
 				{}
 
 
 				Range* m_range;
-				std::size_t m_rangeSize;
 				std::size_t m_chunkIndex;
 				std::size_t m_chunkSize;
 		};
@@ -225,7 +258,7 @@ namespace CLIser::utils {
 		static_assert(std::random_access_iterator<ChunkViewIterator<std::string>>);
 
 
-		template <std::ranges::forward_range Range>
+		template <std::ranges::input_range Range>
 		class ChunkView final : std::ranges::view_interface<ChunkView<Range>> {
 			using This = ChunkView<Range>;
 
@@ -235,21 +268,19 @@ namespace CLIser::utils {
 				template <std::ranges::input_range _Range>
 				constexpr ChunkView(_Range &&range, std::size_t chunkSize) noexcept :
 					m_range {std::forward<_Range> (range)},
-					m_chunkSize {chunkSize},
-					m_chunkCount {(std::size_t)std::ceil(std::ranges::size(m_range) / (float)chunkSize)}
+					m_chunkSize {chunkSize}
 				{}
 
-				constexpr auto begin() noexcept {return iterator{m_range, m_chunkSize, 0};}
-				constexpr auto end() noexcept {return iterator{m_range, m_chunkSize, m_chunkCount};}
+				constexpr auto begin() noexcept {return iterator{m_range, m_chunkSize};}
+				constexpr auto end() noexcept {return iterator{};}
 
 
 			private:
 				Range m_range;
 				std::size_t m_chunkSize;
-				std::size_t m_chunkCount;
 		};
 
-		template <std::ranges::forward_range Range>
+		template <std::ranges::input_range Range>
 		ChunkView(Range&&, std::size_t) -> ChunkView<std::views::all_t<Range>>;
 
 		static_assert(std::ranges::random_access_range<ChunkView<std::string>>);
