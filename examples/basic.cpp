@@ -15,7 +15,7 @@ struct [[
 	[[=CLIser::Short, =CLIser::Description("Specify the output file")]]
 	std::string_view output;
 	[[=CLIser::Short("k"), =CLIser::Long("kount")]]
-	int count;
+	std::optional<int> count;
 };
 
 int main(int argc, char** argv) {
@@ -24,9 +24,16 @@ int main(int argc, char** argv) {
 	})};
 	if (!parserWithError)
 		return std::println(stderr, "Can't create parser : {}", parserWithError.error()), EXIT_FAILURE;
-	auto parser {std::move(parserWithError)};
+	auto parser {std::move(*parserWithError)};
 
-	(void)parser->parse<ArgumentList> ();
+	auto argumentsWithError {parser.parse<ArgumentList> ()};
+	if (!argumentsWithError)
+		return std::println(stderr, "Can't parse arguments : {}", argumentsWithError.error()), EXIT_FAILURE;
+	auto arguments {std::move(*argumentsWithError)};
+
+	std::println("sayHello={}", arguments.sayHello);
+	std::println("output({})={}", arguments.output.size(), arguments.output);
+	std::println("count={}", arguments.count.value_or(-10));
 
 /*	std::string text {"Hello world, I'm will test really small line size, like 5 characters"};
 	auto lines {text | CLIser::utils::views::chunk(5)};

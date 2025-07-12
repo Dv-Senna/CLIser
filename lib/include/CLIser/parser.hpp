@@ -68,11 +68,16 @@ namespace CLIser {
 			static auto create(CreateInfos &&createInfos) noexcept -> std::expected<Parser, std::string>;
 
 			template <argument_list ArgumentList>
+			[[nodiscard]]
 			auto parse() const noexcept -> std::expected<ArgumentList, std::string>;
 
 
 		private:
 			Parser() noexcept = default;
+
+			template <typename T>
+			[[nodiscard]]
+			auto m_parseString(std::string_view value) const noexcept -> std::optional<T>;
 
 			template <argument_list ArgumentList>
 			auto m_printHelp() const noexcept -> void;

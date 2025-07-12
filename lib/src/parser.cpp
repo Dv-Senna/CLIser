@@ -48,6 +48,38 @@ namespace CLIser {
 	}
 
 
+	template <>
+	auto Parser::m_parseString<std::string_view> (std::string_view value) const noexcept
+		-> std::optional<std::string_view>
+	{
+		return value;
+	}
+
+
+	template <>
+	auto Parser::m_parseString<std::string> (std::string_view value) const noexcept -> std::optional<std::string> {
+		return std::string{value};
+	}
+
+
+	template <>
+	auto Parser::m_parseString<bool> (std::string_view value) const noexcept -> std::optional<bool> {
+		using namespace std::string_view_literals;
+		constexpr std::array trueValues {"true"sv, "1"sv, "on"sv};
+		constexpr std::array falseValues {"false"sv, "0"sv, "off"sv};
+		const auto valueLowerCase {value
+			| std::views::transform([](auto c) {return std::tolower(c);})
+			| std::ranges::to<std::string> ()
+		};
+
+		if (std::ranges::find(trueValues, valueLowerCase) != trueValues.end())
+			return true;
+		if (std::ranges::find(falseValues, valueLowerCase) != falseValues.end())
+			return false;
+		return std::nullopt;
+	}
+
+
 	auto Parser::s_printArgumentHelp(
 		std::string_view option,
 		std::optional<std::string_view> description,

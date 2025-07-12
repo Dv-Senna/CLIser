@@ -3,9 +3,11 @@
 #include "CLIser/parser.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <meta>
 #include <print>
 #include <ranges>
+#include <type_traits>
 
 #include "CLIser/argsConfig.hpp"
 #include "CLIser/utils.hpp"
@@ -41,31 +43,104 @@ namespace CLIser {
 			}
 		}
 
-
+		ArgumentList result {};
 		template for (constexpr auto member : members) {
-			std::size_t valueCount {0};
-			std::optional<std::string_view> value {std::nullopt};
+			using namespace std::string_literals;
+			std::vector<std::optional<std::string_view>> values {};
+			std::vector<std::string> keys {};
 
-			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::Description> ()) {
-				constexpr auto description {CLIser::utils::getAnnotation<member, CLIser::Description> ()};
-				std::println("Description : {}", description->value);
-			}
-			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Short> ()) {
-				constexpr auto short_ {CLIser::utils::getAnnotation<member, CLIser::_Short> ()};
-				if constexpr (!short_)
-					std::println("Empty short");
-				else
-					std::println("Short : {}", short_->value);
-			}
+			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Short> ())
+				keys.push_back(CLIser::utils::getMemberShort<member> ());
 			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Long> ()) {
-				constexpr auto long_ {CLIser::utils::getAnnotation<member, CLIser::_Long> ()};
-				if constexpr (!long_)
-					std::println("Empty long");
-				else
-					std::println("Long : {}", long_->value);
+				keys.push_back(CLIser::utils::getMemberLong<member> ());
 			}
+
+			if (keys.empty())
+				continue;
+
+			std::string keyUsed {};
+			for (const auto& key : keys) {
+				auto it {m_rawArgs.find(key)};
+				if (it == m_rawArgs.end())
+					continue;
+//				values.append_range(it->second);
+				keyUsed = key;
+				values.push_back(it->second);
+			}
+
+			if (keyUsed.empty())
+				keyUsed = (keys[0].size() == 1 ? "-"s : "--"s) + keys[0];
+
+			if (values.size() > 1) {
+				return std::unexpected(
+					"Multiple instance of the same argument in command line is not supported for now"
+				);
+			}
+
+		#ifdef CLIser_PARSE_ERROR_STATEMENT
+			#error Macro CLIser_PARSE_ERROR_STATEMENT is used by CLIser, so you must not define it
+			#include <stop_compilation>
+		#endif
+		#define CLIser_PARSE_ERROR_STATEMENT std::unexpected(std::format("Value '{}' of argument {} can't be parsed",\
+			*values[0], keyUsed))
+
+			if constexpr (has_template_arguments(type_of(member)) && template_of(type_of(member)) == ^^std::optional) {
+				if (values.empty() || !values[0])
+					continue;
+				auto parsed {this->[:substitute(^^Parser::m_parseString, {
+					template_arguments_of(type_of(member))[0]
+				}):] (*values[0])};
+				if (!parsed)
+					return CLIser_PARSE_ERROR_STATEMENT;
+				result.[:member:] = *parsed;
+			}
+			else if constexpr (type_of(member) == ^^bool) {
+				if (values.empty()) {
+					result.[:member:] = false;
+					continue;
+				}
+				if (!values[0]) {
+					result.[:member:] = true;
+					continue;
+				}
+				auto parsed {this->m_parseString<bool> (*values[0])};
+				if (!parsed)
+					return CLIser_PARSE_ERROR_STATEMENT;
+				result.[:member:] = *parsed;
+			}
+			else {
+				if (values.empty() || !values[0])
+					return std::unexpected(std::format("Argument {} is mandatory", keyUsed));
+				auto parsed {this->[:substitute(^^Parser::m_parseString, {type_of(member)}):] (*values[0])};
+				if (!parsed)
+					return CLIser_PARSE_ERROR_STATEMENT;
+				result.[:member:] = *parsed;
+			}
+		#undef CLIser_PARSE_ERROR_STATEMENT
 		}
-		return ArgumentList{};
+		return result;
+	}
+
+
+	template <>
+	auto Parser::m_parseString<std::string_view> (std::string_view) const noexcept -> std::optional<std::string_view>;
+	template <>
+	auto Parser::m_parseString<std::string> (std::string_view) const noexcept -> std::optional<std::string>;
+	template <>
+	auto Parser::m_parseString<bool> (std::string_view) const noexcept -> std::optional<bool>;
+
+	template <typename T>
+	auto Parser::m_parseString(std::string_view value) const noexcept -> std::optional<T> {
+		if constexpr (std::is_arithmetic_v<T>) {
+			T result {};
+			const auto [ptr, ec] {std::from_chars(value.data(), value.data() + value.size(), result)};
+			if (ec != std::errc{})
+				return std::nullopt;
+			return result;
+		}
+		else {
+			consteval {throw "Given type can't be parsed";};
+		}
 	}
 
 
