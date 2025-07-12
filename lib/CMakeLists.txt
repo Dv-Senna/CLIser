@@ -78,7 +78,3 @@ install(
 	DESTINATION include/CLIser
 	COMPONENT DEVEL
 )
-
-#install(FILES ${PROJECT_BINARY_DIR}/generated/include/CLIser/export.hpp
-#	DESTINATION ${CMAKE_INSTALL_PREFIX} 
-#)]
