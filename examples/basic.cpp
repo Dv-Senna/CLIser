@@ -7,8 +7,9 @@
 struct [[
 	=CLIser::Help,
 	=CLIser::Name("BasicExample"),
-	=CLIser::Version("alpha-0.1.2")
-	=CLIser::VersionDescription("Special development version")
+	=CLIser::Version("alpha-0.1.2"),
+	=CLIser::VersionDescription("Special development version"),
+	=CLIser::FatalUnknown
 ]] ArgumentList {
 	[[=CLIser::Description("Say hello to the user"), =CLIser::Long("hello")]]
 	bool sayHello;
@@ -30,7 +31,9 @@ int main(int argc, char** argv) {
 	auto argumentsWithError {parser.parse<ArgumentList> ()};
 	if (!argumentsWithError)
 		return std::println(stderr, "Can't parse arguments : {}", argumentsWithError.error()), EXIT_FAILURE;
-	auto arguments {std::move(*argumentsWithError)};
+	if (!*argumentsWithError)
+		return EXIT_SUCCESS;
+	auto arguments {std::move(**argumentsWithError)};
 
 	std::println("sayHello={}", arguments.sayHello);
 	std::println("output={}", arguments.output);

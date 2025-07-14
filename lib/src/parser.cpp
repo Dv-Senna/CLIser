@@ -33,6 +33,8 @@ namespace CLIser {
 				return std::unexpected(std::format("Invalid argument : {}", arg));
 			if (firstNonDash > 2)
 				return std::unexpected(std::format("Invalid number of dash ({}) : {}", firstNonDash, arg));
+			if (firstNonDash == 2 && argName.size() == 1)
+				return std::unexpected(std::format("Invalid number of dash (2) for short argument : {}", arg));
 			if (firstNonDash == 2 || argName.size() == 1) {
 				currentArg = argName;
 				parser.m_rawArgs[argName] = std::nullopt;
@@ -83,7 +85,7 @@ namespace CLIser {
 	auto Parser::s_printArgumentHelp(
 		std::string_view option,
 		std::optional<std::string_view> description,
-		const _Help& help
+		const CLIser::annotations::Help& help
 	) noexcept -> void {
 		std::string text {};
 		text.reserve(help.descriptionAlignment + help.maxDescriptionWidth);

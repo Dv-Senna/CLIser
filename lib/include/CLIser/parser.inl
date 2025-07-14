@@ -15,7 +15,7 @@
 
 namespace CLIser {
 	template <argument_list ArgumentList>
-	auto Parser::parse() const noexcept -> std::expected<ArgumentList, std::string> {
+	auto Parser::parse() const noexcept -> std::expected<std::optional<ArgumentList>, std::string> {
 		using namespace std::string_view_literals;
 		constexpr auto ctx {std::meta::access_context::current()};
 		constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^ArgumentList, ctx))};
@@ -29,31 +29,32 @@ namespace CLIser {
 			);
 		};
 
-		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::_Help> ()) {
+		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::annotations::Help> ()) {
 			if (hasOneOfArguments(std::array{"h"sv, "help"sv})) {
 				this->m_printHelp<ArgumentList> ();
-				return ArgumentList{};
+				return std::nullopt;
 			}
 		}
 
-		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::Version> ()) {
+		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::annotations::Version> ()) {
 			if (hasOneOfArguments(std::array{"v"sv, "version"sv})) {
 				this->m_printVersion<ArgumentList> ();
-				return ArgumentList{};
+				return std::nullopt;
 			}
 		}
 
 		ArgumentList result {};
+		std::vector<std::string_view> usedArguments {};
+
 		template for (constexpr auto member : members) {
 			using namespace std::string_literals;
 			std::vector<std::optional<std::string_view>> values {};
-			std::vector<std::string> keys {};
+			std::vector<std::string_view> keys {};
 
-			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Short> ())
+			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::annotations::Short> ())
 				keys.push_back(CLIser::utils::getMemberShort<member> ());
-			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Long> ()) {
+			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::annotations::Long> ())
 				keys.push_back(CLIser::utils::getMemberLong<member> ());
-			}
 
 			if (keys.empty())
 				continue;
@@ -65,6 +66,7 @@ namespace CLIser {
 					continue;
 //				values.append_range(it->second);
 				keyUsed = key;
+				usedArguments.push_back(key);
 				values.push_back(it->second);
 			}
 
@@ -118,6 +120,31 @@ namespace CLIser {
 			}
 		#undef CLIser_PARSE_ERROR_STATEMENT
 		}
+
+		if constexpr (!utils::hasAnnotation<^^ArgumentList, annotations::SilenceUnknownWarnings> ()) {
+			auto unknownArguments {m_rawArgs
+				| std::views::transform([](const auto& arg) {return arg.first;})
+				| std::views::filter([&usedArguments](const auto& key) {
+					return std::ranges::find(usedArguments, key) == usedArguments.end();
+				})
+				| std::ranges::to<std::vector> ()
+			};
+			if (unknownArguments.empty())
+				return result;
+
+			if constexpr (utils::hasAnnotation<^^ArgumentList, annotations::FatalUnknown> ()) {
+				std::string errorMessage {"The following unknown argument(s) where provided:\n"};
+				errorMessage.append_range(unknownArguments
+					| std::views::transform([](const auto& arg) {return std::format("\t- {}", arg);})
+					| std::views::join_with('\n')
+				);
+				return std::unexpected(errorMessage);
+			}
+			else {
+				for (const auto& arg : unknownArguments)
+					std::println(stderr, "Warning: unknown argument '{}' provided", arg);
+			}
+		}
 		return result;
 	}
 
@@ -149,29 +176,28 @@ namespace CLIser {
 		using namespace std::string_literals;
 		constexpr auto ctx {std::meta::access_context::current()};
 		constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^ArgumentList, ctx))};
-		constexpr auto help {CLIser::utils::getAnnotation<^^ArgumentList, CLIser::_Help> ()};
+		constexpr auto help {CLIser::utils::getAnnotation<^^ArgumentList, CLIser::annotations::Help> ()};
 
 		std::println("Usage: {} [options]", m_commandName);
 		std::println("Options:");
 		s_printArgumentHelp("-h,--help", "Display this menu", help);
 
-		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::Name> ())
+		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::annotations::Name> ())
 			s_printArgumentHelp("-v,--version", "Display the version of the application", help);
 
 		template for (constexpr auto member : members) {
 			std::string option {};
 			std::optional<std::string_view> description {};
 
-			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Short> ()) {
+			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::annotations::Short> ())
 				option += "-"s + CLIser::utils::getMemberShort<member> ();
-			}
-			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::_Long> ()) {
+			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::annotations::Long> ()) {
 				if (!option.empty())
 					option += ',';
 				option += "--"s + CLIser::utils::getMemberLong<member> ();
 			}
-			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::Description> ())
-				description = CLIser::utils::getAnnotation<member, CLIser::Description> ()->value;
+			if constexpr (CLIser::utils::hasAnnotation<member, CLIser::annotations::Description> ())
+				description = CLIser::utils::getAnnotation<member, CLIser::annotations::Description> ().value;
 
 			s_printArgumentHelp(option, description, help);
 		}
@@ -180,12 +206,12 @@ namespace CLIser {
 
 	template <argument_list ArgumentList>
 	auto Parser::m_printVersion() const noexcept -> void {
-		constexpr auto name {*CLIser::utils::getAnnotation<^^ArgumentList, CLIser::Name> ()};
-		constexpr auto version {*CLIser::utils::getAnnotation<^^ArgumentList, CLIser::Version> ()};
+		constexpr auto name {CLIser::utils::getAnnotation<^^ArgumentList, CLIser::annotations::Name> ()};
+		constexpr auto version {CLIser::utils::getAnnotation<^^ArgumentList, CLIser::annotations::Version> ()};
 		std::println("{} {}", name.value, version.value);
-		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::VersionDescription> ()) {
+		if constexpr (CLIser::utils::hasAnnotation<^^ArgumentList, CLIser::annotations::VersionDescription> ()) {
 			constexpr auto versionDescription {
-				*CLIser::utils::getAnnotation<^^ArgumentList, CLIser::VersionDescription> ()
+				CLIser::utils::getAnnotation<^^ArgumentList, CLIser::annotations::VersionDescription> ()
 			};
 			std::println("{}", versionDescription.value);
 		}

@@ -22,25 +22,6 @@ namespace CLIser::utils {
 		return false;
 	}
 
-	template <std::meta::info r, template <auto...> typename T>
-	consteval auto hasAnnotation() noexcept -> bool {
-		template for (constexpr auto a : std::define_static_array(annotations_of(r))) {
-			if constexpr (has_template_arguments(type_of(a)) && template_of(type_of(a)) == ^^T) {
-				using AnnotationType = [:type_of(a):];
-				return true;
-			}
-			else if constexpr (has_template_arguments(type_of(a))
-				&& template_of(type_of(a)) == ^^CLIser::internals::OptionalWrapper
-			) {
-				constexpr auto inner {std::define_static_array(template_arguments_of(type_of(a)))[0]};
-				if (inner == ^^T)
-					return true;
-			}
-		}
-		return false;
-	}
-
-
 	template <std::meta::info r, typename T>
 	consteval auto getAnnotation() -> T {
 		template for (constexpr auto a : std::define_static_array(annotations_of(r))) {
@@ -50,45 +31,26 @@ namespace CLIser::utils {
 		throw "Can't get not present annotation. Please use `utils::hasAnnotation to check for presence`";
 	}
 
-	template <std::meta::info r, template <auto...> typename T>
-	consteval auto getAnnotation() {
-		template for (constexpr auto a : std::define_static_array(annotations_of(r))) {
-			using AnnotationType = [:type_of(a):];
-			if constexpr (has_template_arguments(type_of(a)) && template_of(type_of(a)) == ^^T) {
-				return std::optional{extract<AnnotationType> (a)};
-			}
-			else if constexpr (has_template_arguments(type_of(a))
-				&& template_of(type_of(a)) == ^^CLIser::internals::OptionalWrapper
-			) {
-				constexpr auto inner {std::define_static_array(template_arguments_of(type_of(a)))[0]};
-				if constexpr (inner == ^^T)
-					return std::optional<AnnotationType> {std::nullopt};
-			}
-		}
-		throw "Can't get not present annotation. Please use `utils::hasAnnotation to check for presence`";
-	}
-
-
 	template <std::meta::info r>
-	consteval auto getMemberShort() -> std::string {
-		if constexpr (!hasAnnotation<r, CLIser::_Short> ())
+	consteval auto getMemberShort() -> std::string_view {
+		if constexpr (!hasAnnotation<r, CLIser::annotations::Short> ())
 			throw "Can't get member short as it does not have this annotation";
-		constexpr auto short_ {getAnnotation<r, CLIser::_Short> ()};
+		constexpr auto short_ {getAnnotation<r, CLIser::annotations::Short> ()};
 		if constexpr (!!short_)
-			return std::string{short_->value};
+			return std::string_view{short_.value};
 		else
-			return std::string{identifier_of(r)}.substr(0, 1);
+			return std::string_view{identifier_of(r)}.substr(0, 1);
 	};
 
 	template <std::meta::info r>
-	consteval auto getMemberLong() -> std::string {
-		if constexpr (!hasAnnotation<r, CLIser::_Long> ())
+	consteval auto getMemberLong() -> std::string_view {
+		if constexpr (!hasAnnotation<r, CLIser::annotations::Long> ())
 			throw "Can't get member long as it does not have this annotation";
-		constexpr auto long_ {getAnnotation<r, CLIser::_Long> ()};
+		constexpr auto long_ {getAnnotation<r, CLIser::annotations::Long> ()};
 		if constexpr (!!long_)
-			return std::string{long_->value};
+			return std::string_view{long_.value};
 		else
-			return std::string{identifier_of(r)};
+			return std::string_view{identifier_of(r)};
 	};
 
 
@@ -99,11 +61,11 @@ namespace CLIser::utils {
 
 		std::size_t count {};
 		template for (constexpr auto member : members) {
-			if constexpr (hasAnnotation<member, CLIser::_Short> ()) {
+			if constexpr (hasAnnotation<member, CLIser::annotations::Short> ()) {
 				if (getMemberShort<member> () == option)
 					++count;
 			}
-			else if constexpr (hasAnnotation<member, CLIser::_Long> ()) {
+			else if constexpr (hasAnnotation<member, CLIser::annotations::Long> ()) {
 				if (getMemberLong<member> () == option)
 					++count;
 			}
@@ -121,7 +83,7 @@ namespace CLIser::utils {
 		constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^T, ctx))};
 
 		template for (constexpr auto member : members) {
-			if constexpr (hasAnnotation<member, CLIser::_Short> ()) {
+			if constexpr (hasAnnotation<member, CLIser::annotations::Short> ()) {
 				if (getMemberShort<member> ().size() != 1)
 					return false;
 			}
@@ -135,7 +97,7 @@ namespace CLIser::utils {
 		constexpr auto members {std::define_static_array(nonstatic_data_members_of(^^T, ctx))};
 
 		template for (constexpr auto member : members) {
-			if constexpr (hasAnnotation<member, CLIser::_Long> ()) {
+			if constexpr (hasAnnotation<member, CLIser::annotations::Long> ()) {
 				if (getMemberLong<member> ().size() <= 1)
 					return false;
 			}

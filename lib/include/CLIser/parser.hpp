@@ -19,10 +19,16 @@ namespace CLIser {
 	namespace internals {
 		template <typename T>
 		consteval auto isArgumentListValidAnnotations() {
-			const bool hasHelp {CLIser::utils::hasAnnotation<^^T, CLIser::_Help> ()};
-			const bool hasName {CLIser::utils::hasAnnotation<^^T, CLIser::Name> ()};
-			const bool hasVersion {CLIser::utils::hasAnnotation<^^T, CLIser::Version> ()};
-			const bool hasVersionDescription {CLIser::utils::hasAnnotation<^^T, CLIser::VersionDescription> ()};
+			const bool hasHelp {CLIser::utils::hasAnnotation<^^T, CLIser::annotations::Help> ()};
+			const bool hasName {CLIser::utils::hasAnnotation<^^T, CLIser::annotations::Name> ()};
+			const bool hasVersion {CLIser::utils::hasAnnotation<^^T, CLIser::annotations::Version> ()};
+			const bool hasVersionDescription {
+				CLIser::utils::hasAnnotation<^^T, CLIser::annotations::VersionDescription> ()
+			};
+			const bool hasFatalUnkown {CLIser::utils::hasAnnotation<^^T, CLIser::annotations::FatalUnknown> ()};
+			const bool hasSilenceUnkownWarnings {
+				CLIser::utils::hasAnnotation<^^T, CLIser::annotations::SilenceUnknownWarnings> ()
+			};
 
 			if (!CLIser::utils::isTypeShortAllShort<T> ())
 				throw "All your Short must be one character wide. If you need more space, use Long";
@@ -44,6 +50,9 @@ namespace CLIser {
 				throw "You can't use '-v' or '--version' when version menu is enable";
 			if (hasVersionDescription && !hasName)
 				throw "You can't specify a VersionDescription if the version menu is not enabled";
+
+			if (hasFatalUnkown && hasSilenceUnkownWarnings)
+				throw "You can't make unknown argument a fatal error and silence unkowns";
 			return true;
 		};
 	}
@@ -69,7 +78,7 @@ namespace CLIser {
 
 			template <argument_list ArgumentList>
 			[[nodiscard]]
-			auto parse() const noexcept -> std::expected<ArgumentList, std::string>;
+			auto parse() const noexcept -> std::expected<std::optional<ArgumentList>, std::string>;
 
 			inline auto getUnnamedArgs() const noexcept -> const auto& {return m_rawUnnamedArgs;}
 
@@ -89,7 +98,7 @@ namespace CLIser {
 			static auto s_printArgumentHelp(
 				std::string_view option,
 				std::optional<std::string_view> description,
-				const _Help& help
+				const annotations::Help& help
 			) noexcept -> void;
 
 			std::string_view m_commandName;
